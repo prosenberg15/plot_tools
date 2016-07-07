@@ -75,15 +75,24 @@ def shift_origin_array(z,dims):
 # to be plotted
 def reshape_1D_to_2D(x, y, data):
     xnew, ynew = np.ogrid[x.min():x.max():(x.max()-x.min()+1)*1j, y.min():y.max():(y.max()-y.min()+1)*1j]
-    dataloc=copy.deepcopy(np.reshape(data,(ynew.shape[1],xnew.shape[0])))    
+    dataloc=copy.deepcopy(data)
+    dataloc=np.reshape(dataloc,(ynew.shape[1],xnew.shape[0]))    
     return dataloc
 
 # perform spline-interpolation on 2D data
-def splineinterp(x, y, data):
+def splineinterp_2D(x, y, data,degx,degy,smooth):
     xnew, ynew = np.ogrid[x.min():x.max():(x.max()-x.min()+1)*1j, y.min():y.max():(y.max()-y.min()+1)*1j]   
-    return interpolate.RectBivariateSpline(xnew,ynew,data,s=0)     
-        
-        
+    # caution : RectBivariateSpline flips x & y axes, must provides parameters as (y,x), not (x,y)
+    return interpolate.RectBivariateSpline(ynew,xnew,data,kx=degx,ky=degy,s=smooth)
+
+"""
+# take raw data in list form transform to 2D array form output interpolating function
+def perform_interp(x, y, data, degx, degy, smooth, shift, dims):
+    data=reshape_1D_to_2D(x,y,data)
+    if shift:
+        data=shift_origin_array(data,dims)
+    return splineinterp_2D(x,y,data,degx,degy,smooth)
+"""     
         
         
         
