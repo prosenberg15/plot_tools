@@ -26,6 +26,7 @@ Ntot=Nl[0]*Nl[1]
 shift=np.zeros(Ntot)
 shift.fill(1)
 
+
 if ('didj' in sys.argv[1]):
     plot_flag='didj'
     arg_shift=1
@@ -124,6 +125,7 @@ elif('didj' in plot_flag):
     didj_2D_i=splineinterp_2D(didj_x,didj_y,didj_2D,3,3,0)
     plot_func=didj_2D_i
 
+
 elif('psi_r' in plot_flag):
     # load psi_r_normed.dat (normalized real-space wfn)
     psidata=np.loadtxt(sys.argv[1+arg_shift],dtype=np.float64)
@@ -142,11 +144,11 @@ elif('psi_r' in plot_flag):
     mod_psi_r=np.sqrt((psi_r[:].real)**2+(psi_r[:].imag)**2)
     ##############################################################
     # psi_dd
-    psi_r_dd=psidata[Ntot:2*Ntot,0]+1j*psidata[Ntot:2*Ntot,1]
+    dd=psidata[Ntot:2*Ntot,0]+1j*psidata[Ntot:2*Ntot,1]
     # |psi_dd|
-    mod_psi_r_dd=np.sqrt((psi_r_dd[:].real)**2+(psi_r_dd[:].imag)**2)
-    mod_psi_r_dd_re=psi_r_dd[:].real
-    mod_psi_r_dd_im=psi_r_dd[:].imag
+    mod_dd=np.sqrt((dd[:].real)**2+(dd[:].imag)**2)
+    dd_re=dd[:].real
+    dd_im=dd[:].imag
     ##############################################################
     # psi_s
     psi_r_s=psidata[2*Ntot:,0]+1j*psidata[2*Ntot:,1]
@@ -156,13 +158,13 @@ elif('psi_r' in plot_flag):
     mod_psi_r_s_im=psi_r_s[:].imag
     ##############################################################
     # |psi_tot|
-    mod_psi_r_tot=mod_psi_r_s+mod_psi_r_dd+mod_psi_r
-    mod_psi_r_tot_re=psi_r_s[:].real+psi_r_dd[:].real+psi_r[:].real
-    mod_psi_r_tot_im=psi_r_s[:].imag+psi_r_dd[:].imag+psi_r[:].imag
+    mod_psi_r_tot=mod_psi_r_s+mod_dd+mod_psi_r
+    mod_psi_r_tot_re=psi_r_s[:].real+dd[:].real+psi_r[:].real
+    mod_psi_r_tot_im=psi_r_s[:].imag+dd[:].imag+psi_r[:].imag
 
     # shift x,y coords (currently stored as lists), so origin is at center, not edge of plot 
     psi_x=shift_origin_list(psi_x,Nl[0])
-    psi_y=shift_origin_list(psi_y,Nl[0])
+    psi_y=shift_origin_list(psi_y,Nl[1])
 
     """
     psi_x_trunc=[]
@@ -189,31 +191,30 @@ elif('psi_r' in plot_flag):
     if('dd' in sys.argv[1]):
         # modulus wfn
         # reshape list --> 2D array
-        mod_psi_r_dd_2D=reshape_1D_to_2D(psi_x,psi_y,mod_psi_r_dd)
+        dd_2D=reshape_1D_to_2D(psi_x,psi_y,mod_dd)
         # shift origin
-        mod_psi_r_dd_2D=shift_origin_array(mod_psi_r_dd_2D,Nl)
+        dd_2D=shift_origin_array(dd_2D,Nl)
         # interpolate
-        mod_psi_r_dd_2D_i=splineinterp_2D(psi_x,psi_y,mod_psi_r_dd_2D,3,3,0)
-        #plot_func=mod_psi_r_dd_2D_i
+        dd_2D_i=splineinterp_2D(psi_x,psi_y,dd_2D,3,3,0)
+        plot_func=dd_2D_i
 
         # real part
         # reshape list --> 2D array
-        mod_psi_r_dd_2D_re=reshape_1D_to_2D(psi_x,psi_y,mod_psi_r_dd_re)
+        dd_2D_re=reshape_1D_to_2D(psi_x,psi_y,dd_re)
         # shift origin
-        mod_psi_r_dd_2D_re=shift_origin_array(mod_psi_r_dd_2D_re,Nl)
+        dd_2D_re=shift_origin_array(dd_2D_re,Nl)
         # interpolate
-        mod_psi_r_dd_2D_re_i=splineinterp_2D(psi_x,psi_y,mod_psi_r_dd_2D_re,3,3,0)
-        plot_func_re=mod_psi_r_dd_2D_re_i
+        dd_2D_re_i=splineinterp_2D(psi_x,psi_y,dd_2D_re,3,3,0)
+        plot_func_re=dd_2D_re_i
 
         # imag part
         # reshape list --> 2D array
-        mod_psi_r_dd_2D_im=reshape_1D_to_2D(psi_x,psi_y,mod_psi_r_dd_im)
+        dd_2D_im=reshape_1D_to_2D(psi_x,psi_y,dd_im)
         # shift origin
-        mod_psi_r_dd_2D_im=shift_origin_array(mod_psi_r_dd_2D_im,Nl)
+        dd_2D_im=shift_origin_array(dd_2D_im,Nl)
         # interpolate
-        mod_psi_r_dd_2D_im_i=splineinterp_2D(psi_x,psi_y,mod_psi_r_dd_2D_im,3,3,0)
-        plot_func_im=mod_psi_r_dd_2D_im_i
-
+        dd_2D_im_i=splineinterp_2D(psi_x,psi_y,dd_2D_im,3,3,0)
+        plot_func_im=dd_2D_im_i
 
         """
         plot_func_re=perform_interp(psi_x,psi_y,mod_psi_r_dd_re,3,3,0,True,Nl)
@@ -299,7 +300,7 @@ elif('psi_r' in plot_flag):
             mod_psi_r_dd_2D=reshape_1D_to_2D(psi_x,psi_y,mod_psi_r_dd)
             mod_psi_r_dd_2D=shift_origin_array(mod_psi_r_dd_2D,Nl)
             mod_psi_r_dd_2D_i=splineinterp_2D(psi_x,psi_y,mod_psi_r_dd_2D,3,3,0)
-            """
+
             # real part
             mod_psi_r_dd_2D_re=reshape_1D_to_2D(psi_x,psi_y,mod_psi_r_dd_re)
             mod_psi_r_dd_2D_re=shift_origin_array(mod_psi_r_dd_2D_re,Nl)
@@ -312,7 +313,7 @@ elif('psi_r' in plot_flag):
             plot_func=mod_psi_r_dd_2D_i
             plot_func_re=mod_psi_r_dd_2D_re_i
             plot_func_im=mod_psi_r_dd_2D_im_i
-            """
+
         elif('sing' in wfnflag):
             # mod wfn.
             mod_psi_r_s_2D=reshape_1D_to_2D(psi_x,psi_y,mod_psi_r_s)
@@ -364,18 +365,13 @@ ysdir=0
 
 #xsexact,ysexact,qsexact,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,psi_x,psi_y,nui_nuj,[0]*len(ninj))
 
-xsexact,ysexact,qsexact,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,psi_x,psi_y,mod_psi_r_dd,[0]*len(psi_r))
+xsexact,ysexact,qsexact,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,psi_x,psi_y,mod_dd,[0]*len(dd))
 #print "xs :", xsexact
 #print "ys :", ysexact
-xsexact_re,ysexact_re,qsexact_re,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,psi_x,psi_y,mod_psi_r_dd_re,[0]*len(psi_r))
+xsexact,ysexact,qsexact_re,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,psi_x,psi_y,dd_re,[0]*len(dd_re))
 #print "xs :", xsexact
 #print "ys :", ysexact
-print "qs_re :", qsexact_re
-xsexact,ysexact,qsexact_im,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,psi_x,psi_y,mod_psi_r_dd_im,[0]*len(psi_r))
-print "xs :", xsexact_re
-print "ys :", ysexact_re
-print "qs_im :", qsexact_im
-print "qs :", qsexact
+xsexact,ysexact,qsexact_im,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,psi_x,psi_y,dd_im,[0]*len(dd_im))
 #print "sqrt(qs_re^2+qs_im^2) :", np.sqrt(np.array(qsexact_im)**2+np.array(qsexact_re)**2)
 xsexact=np.array(xsexact)
 ysexact=np.array(ysexact)
@@ -390,20 +386,17 @@ fig = plt.figure()
 ax=fig.add_subplot(111)
 ax.set_xticks(np.arange(xi.min(),xi.max()+1,1))
 
-#xnew, ynew = np.ogrid[xsexact.min():xsexact.max():(xsexact.max()-xsexact.min()+1)*1j, ysexact.min():ysexact.max():(ysexact.max()-ysexact.min()+1)*1j]   
-#print diag(xnew)[:15]
-print xsexact.min(), xsexact.max()
 xnew=np.linspace(xsexact.min(),xsexact.max(),100)
+#ynew=np.linspace(ysexact.min(),ysexact.max(),100)
 #xnewfunc=xnew/(1.0*Nl[0])
 ynew=np.empty(len(xnew))
 ynew.fill(y0)
-#ynew=np.linspace(ysexact.min(),ysexact.max(),100)
 #ynewfunc=ynew/(1.0*Nl[1])
 #ax.plot(xnew*np.sqrt(2.0),plot_func_trunc.ev(xnewfunc,ynewfunc))
-ax.plot(xnew,mod_psi_r_dd_2D_i.ev(xnew,ynew),color='orange')
-ax.plot(xnew,plot_func_re.ev(xnew,ynew),color='blue')
-ax.plot(xnew,plot_func_im.ev(xnew,ynew),color='green')
-ax.plot(xnew,np.sqrt(plot_func_re.ev(xnew,ynew)**2+plot_func_im.ev(xnew,ynew)**2),color='purple')
+ax.plot(xnew,plot_func.ev(ynew,xnew),color='orange')
+ax.plot(xnew,plot_func_re.ev(ynew,xnew),color='blue')
+ax.plot(xnew,plot_func_im.ev(ynew,xnew),color='green')
+ax.plot(xnew,np.sqrt(plot_func_re.ev(ynew,xnew)**2+plot_func_im.ev(ynew,xnew)**2),color='purple')
 
 #xsexact=np.sqrt(2.0)*xsexact
 ax.plot(xsexact,qsexact,linestyle='None',color='red',marker='o')
@@ -444,8 +437,8 @@ ax.set_ylim(-Nl[1]/2,Nl[1]/2-1)
 ax.set_xlabel('x')
 ax.set_ylabel('y')
 
-#ax.scatter(psi_x, psi_y, mod_psi_r_dd+0.001, s=20, c='red')
-surf = ax.plot_surface(xi, yi, plot_func(xi,yi), rstride=1, cstride=1, cmap=cm.gnuplot,
+ax.scatter(psi_x, psi_y, dd_re+0.001, s=20, c='red')
+surf = ax.plot_surface(xi, yi, plot_func_re(xi,yi), rstride=1, cstride=1, cmap=cm.gnuplot,
         linewidth=0, antialiased=False)
 
 
