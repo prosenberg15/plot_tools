@@ -43,111 +43,139 @@ else:
     plot_flag=str(raw_input("didj, ninj, nk, psi_r? : "))
     arg_shift=0
 
+for arg in sys.argv:
+    if('open' in arg):
+        open_flg='open_BCs'
+    if('1D' in arg):
+        dim_flag='1D'
+    if('2D' in arg):
+        dim_flag='2D'
+    if('3D' in arg):
+        dim_flag='3D'
+
+num_files=1
+if('1D' in dim_flag):
+    num_files=int(raw_input("number of files? : "))
+
 if('ninj' in plot_flag):
-    data=np.loadtxt(sys.argv[1+arg_shift],dtype=np.float64)
-    # nu*nd                       
-    nui_ndj=np.array(data[Nl[0]*Nl[1]:,1])
-    nui_ndj_err=np.array(data[Nl[0]*Nl[1]:,3])
-    # nu*nu
-    nui_nuj=np.array(data[:Nl[0]*Nl[1],1])
-    nui_nuj_err=np.array(data[:Nl[0]*Nl[1],3])
 
-    for arg in sys.argv:
-        if('open' in arg):
-            open_flg='open_BCs'
-            #nui_ndj=nui_ndj/np.sqrt(nui_nuj[0])
-            #nui_nuj=nui_nuj/np.sqrt(nui_nuj[0])
+    nui_ndj=np.empty((num_files,Ntot),dtype=np.float64)
+    nui_ndj_err=np.empty((num_files,len(nui_ndj[0,:])),dtype=np.float64)
+    nui_nuj=np.empty((num_files,Ntot),dtype=np.float64)
+    nui_nuj_err=np.empty((num_files,len(nui_ndj[0,:])),dtype=np.float64)
+    ninj=np.empty((num_files,len(nui_ndj[0,:])),dtype=np.float64)
+    ninjerr=np.empty((num_files,len(nui_ndj[0,:])),dtype=np.float64)
 
-    # nu*nd + nu*nu
-    ninj=nui_ndj+nui_nuj
-    ninjerr=nui_ndj_err+nui_nuj_err
+    plt_fn_dict = {}
 
-    # scale down self-interaction peak at origin
-    nui_ndj[0]=nui_ndj[0]/2.0
-    nui_nuj[0]=nui_nuj[0]/2.0
-    ninj[0]=ninj[0]/2.0
+    for ind in range(num_files):
+        Nl[0]=int(raw_input("Enter Lx : "))
+        Nl[1]=int(raw_input("Enter Ly : "))
+        Ntot=Nl[0]*Nl[1]
 
-    lattlabel=np.loadtxt(sys.argv[2+arg_shift])
-    # shift, so lattice site 1 has coords (x,y)=(0,0) (not (1,1))
-    shift=np.zeros(len(lattlabel[:,0]))
-    shift.fill(1)
-    ninj_x=lattlabel[:,1]-shift[:]
-    ninj_y=lattlabel[:,2]-shift[:]
-    
-    # shift x,y coords (currently stored as lists)
-    ninj_x=shift_origin_list(ninj_x,Nl[0])
-    ninj_y=shift_origin_list(ninj_y,Nl[1])
-
-    xi, yi = np.ogrid[ninj_x.min():ninj_x.max():200j, ninj_y.min():ninj_y.max():200j]
-    # ogrid gives transposed axes, so transpose back
-    xi, yi = xi.T, yi.T
-    
-    corr_flag = str(raw_input("nu*nu, nu*nd, ntot*ntot? : "))
-    if('nu*nu' in corr_flag):
+        data=np.loadtxt(sys.argv[1+arg_shift+2*ind],dtype=np.float64)
+        # nu*nd                       
+        nui_ndj[ind,:]=np.array(data[Ntot:,1])
+        nui_ndj_err[ind,:]=np.array(data[Ntot:,3])
         # nu*nu
-        # reshape list --> 2D array
-        nui_nuj_2D=reshape_1D_to_2D(ninj_x,ninj_y,nui_nuj)
-        # shift origin
-        nui_nuj_2D=shift_origin_array(nui_nuj_2D,Nl)
-        # interpolate
-        nui_nuj_2D_i=splineinterp_2D(ninj_x,ninj_y,nui_nuj_2D,3,3,0)
-        plot_func=nui_nuj_2D_i
-    elif('nu*nd' in corr_flag):
-        # nu*nd
-        nui_ndj_2D=reshape_1D_to_2D(ninj_x,ninj_y,nui_ndj)
-        # shift origin
-        nui_ndj_2D=shift_origin_array(nui_ndj_2D,Nl)
-        # interpolate
-        nui_ndj_2D_i=splineinterp_2D(ninj_x,ninj_y,nui_ndj_2D,3,3,0)
-        plot_func=nui_ndj_2D_i
-    elif('ntot*ntot' in corr_flag):
-        # ntot*ntot
-        ninj_2D=reshape_1D_to_2D(ninj_x,ninj_y,ninj)
-        # shift origin
-        ninj_2D=shift_origin_array(ninj_2D,Nl)
-        # interpolate
-        ninj_2D_i=splineinterp_2D(ninj_x,ninj_y,ninj_2D,3,3,0)
-        plot_func=ninj_2D_i
+        nui_nuj[ind,:]=np.array(data[:Ntot,1])
+        nui_nuj_err[ind,:]=np.array(data[:Ntot,3])
+
+        # nu*nd + nu*nu
+        ninj[ind,:]=nui_ndj[ind,:]+nui_nuj[ind,:]
+        ninjerr[ind,:]=nui_ndj_err[ind,:]+nui_nuj_err[ind,:]
+
+        # scale down self-interaction peak at origin            
+        nui_ndj[ind,0]=nui_ndj[ind,0]/2.0
+        nui_nuj[ind,0]=nui_nuj[ind,0]/2.0
+        ninj[ind,0]=ninj[ind,0]*(0.5/0.7)
+
+        lattlabel=np.loadtxt(sys.argv[2+arg_shift+2*ind])
+        # shift, so lattice site 1 has coords (x,y)=(0,0) (not (1,1))
+        shift=np.zeros(len(lattlabel[:,0]))
+        shift.fill(1)
+        ninj_x=lattlabel[:,1]-shift[:]
+        ninj_y=lattlabel[:,2]-shift[:]
+    
+        # shift x,y coords (currently stored as lists)
+        ninj_x=shift_origin_list(ninj_x,Nl[0])
+        ninj_y=shift_origin_list(ninj_y,Nl[1])
+
+        xi, yi = np.ogrid[ninj_x.min():ninj_x.max():200j, ninj_y.min():ninj_y.max():200j]
+        # ogrid gives transposed axes, so transpose back
+        xi, yi = xi.T, yi.T
+    
+        corr_flag = str(raw_input("nu*nu, nu*nd, ntot*ntot? : "))
+        if('nu*nu' in corr_flag):
+            # nu*nu
+            # reshape list --> 2D array
+            nui_nuj_2D=reshape_1D_to_2D(ninj_x,ninj_y,nui_nuj[ind,:])
+            # shift origin
+            nui_nuj_2D=shift_origin_array(nui_nuj_2D,Nl)
+            # interpolate
+            nui_nuj_2D_i=splineinterp_2D(ninj_x,ninj_y,nui_nuj_2D,3,3,0)
+            plot_func=nui_nuj_2D_i
+            plt_fn_dict[ind]=plot_func
+        elif('nu*nd' in corr_flag):
+            # nu*nd
+            nui_ndj_2D=reshape_1D_to_2D(ninj_x,ninj_y,nui_ndj[ind,:])
+            # shift origin
+            nui_ndj_2D=shift_origin_array(nui_ndj_2D,Nl)
+            # interpolate
+            nui_ndj_2D_i=splineinterp_2D(ninj_x,ninj_y,nui_ndj_2D,3,3,0)
+            plot_func=nui_ndj_2D_i
+            plt_fn_dict[ind]=plot_func
+        elif('ntot*ntot' in corr_flag):
+            # ntot*ntot
+            ninj_2D=reshape_1D_to_2D(ninj_x,ninj_y,ninj[ind,:])
+            # shift origin
+            ninj_2D=shift_origin_array(ninj_2D,Nl)
+            # interpolate
+            ninj_2D_i=splineinterp_2D(ninj_x,ninj_y,ninj_2D,3,3,0)
+            plot_func=ninj_2D_i
+            plt_fn_dict[ind]=plot_func
 
 elif('didj' in plot_flag):
 
-    for arg in sys.argv:
-        if('open' in arg):
-            open_flg='open_BCs'
+    didj=np.empty((num_files,Ntot),dtype=np.float64)
+    didjerr=np.empty((num_files,len(didj[0,:])),dtype=np.float64)
 
-    #load didj data
-    data=np.loadtxt(sys.argv[1+arg_shift],dtype=np.float64)
-    didj=data[:,1]
-    didjerr=data[:,3]
-    # scale origin
-    #didj[0]=0.01
-    didj[0]=didj[0]/10.0
-    # normalize
-    #didj=didj[:]*(Nl[0]*Nl[1])**2/(Np*(Np-1))
-    #didjerr=didjerr[:]*(Nl[0]*Nl[1])**2/(Np*(Np-1))
-    # load x, y coords from lattice-label.dat
-    lattlabel=np.loadtxt(sys.argv[2+arg_shift])
-    # shift, so lattice site 1 has coords (x,y)=(0,0) (not (1,1))
-    shift=np.zeros(len(lattlabel[:,0]))
-    shift.fill(1)
-    didj_x=lattlabel[:,1]-shift[:]
-    didj_y=lattlabel[:,2]-shift[:]
+    plt_fn_dict = {}
+
+    for ind in range(num_files):
+        #load didj data
+        data=np.loadtxt(sys.argv[1+arg_shift+2*ind],dtype=np.float64)
+        didj[ind,:]=data[:,1]
+        didjerr[ind,:]=data[:,3]
+        # scale origin
+        didj[ind,0]=didj[ind,0]/10.0
+        # normalize
+        #didj=didj[:]*(Ntot)**2/(Np*(Np-1))
+        #didjerr=didjerr[:]*(Ntot)**2/(Np*(Np-1))
+        # load x, y coords from lattice-label.dat
+        lattlabel=np.loadtxt(sys.argv[2+arg_shift+2*ind])
+        # shift, so lattice site 1 has coords (x,y)=(0,0) (not (1,1))
+        shift=np.zeros(len(lattlabel[:,0]))
+        shift.fill(1)
+        didj_x=lattlabel[:,1]-shift[:]
+        didj_y=lattlabel[:,2]-shift[:]
     
-    # shift x,y coords (currently stored as lists)
-    didj_x=shift_origin_list(didj_x,Nl[0])
-    didj_y=shift_origin_list(didj_y,Nl[1])
+        # shift x,y coords (currently stored as lists)
+        didj_x=shift_origin_list(didj_x,Nl[0])
+        didj_y=shift_origin_list(didj_y,Nl[1])
 
-    xi, yi = np.ogrid[didj_x.min():didj_x.max():200j, didj_y.min():didj_y.max():200j]
-    # ogrid gives transposed axes, so transpose back
-    xi, yi = xi.T, yi.T
+        xi, yi = np.ogrid[didj_x.min():didj_x.max():200j, didj_y.min():didj_y.max():200j]
+        # ogrid gives transposed axes, so transpose back
+        xi, yi = xi.T, yi.T
 
-    # reshape list --> 2D array
-    didj_2D=reshape_1D_to_2D(didj_x,didj_y,didj)
-    # shift origin
-    didj_2D=shift_origin_array(didj_2D,Nl)
-    # interpolate
-    didj_2D_i=splineinterp_2D(didj_x,didj_y,didj_2D,3,3,0)
-    plot_func=didj_2D_i
+        # reshape list --> 2D array
+        didj_2D=reshape_1D_to_2D(didj_x,didj_y,didj[ind,:])
+        # shift origin
+        didj_2D=shift_origin_array(didj_2D,Nl)
+        # interpolate
+        didj_2D_i=splineinterp_2D(didj_x,didj_y,didj_2D,3,3,0)
+        plot_func=didj_2D_i
+        plt_fn_dict[ind]=plot_func
 
 
 elif('psi_r' in plot_flag):
@@ -392,21 +420,27 @@ elif('psi_r' in plot_flag):
 # grab 1D slice
 # slice defined by starting point (x0,y0)
 # and direction vector (xsdir,ysdir)
-"""
-x0=psi_x.min()
-y0=0
-xsdir=1
-ysdir=0
+
+if ('ninj' in plot_flag):
+    x0=ninj_x.min()
+    y0=0
+    xsdir=1
+    ysdir=0
+elif ('didj' in plot_flag):
+    x0=didj_x.min()
+    y0=0
+    xsdir=1
+    ysdir=0
 
 #xsexact,ysexact,qsexact,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,psi_x,psi_y,ninj,[0]*len(ninj))
 
-xsexact,ysexact,qsexact,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,psi_x,psi_y,mod_psi_r_tot,[0]*len(mod_psi_r_tot))
-xsexact,ysexact,qsexact_re,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,psi_x,psi_y,tot_re,[0]*len(tot_re))
+#xsexact,ysexact,qsexact,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,ninj_x,ninj_y,ninj,[0]*len(ninj))
+#xsexact,ysexact,qsexact_re,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,ninj_x,ninj_y,tot_re,[0]*len(ninj))
 #xsexact,ysexact,qsexact_im,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,psi_x,psi_y,tot_im,[0]*len(tot_im))
 
-xsexact=np.array(xsexact)
-ysexact=np.array(ysexact)
-"""
+#xsexact=np.array(xsexact)
+#ysexact=np.array(ysexact)
+
 # set up figure environment
 fig = plt.figure()
 
@@ -415,24 +449,36 @@ fig = plt.figure()
 if '1D' in dim_flag:
     ax=fig.add_subplot(111)
     ax.set_xticks(np.arange(xi.min(),xi.max()+1,1))
+    #ax.set_ylim(0.51,0.513)
+    c=['blue','red','green','orange','yellow']
+    m=['s','o','^','d','*']
 
-    xnew=np.linspace(xsexact.min(),xsexact.max(),100)
+    #xnew=np.linspace(xsexact.min(),xsexact.max(),100)
     #ynew=np.linspace(ysexact.min(),ysexact.max(),100)
     #xnewfunc=xnew/(1.0*Nl[0])
-    ynew=np.empty(len(xnew))
-    ynew.fill(y0)
+    #ynew=np.empty(len(xnew))
+    #ynew.fill(y0)
     #ynewfunc=ynew/(1.0*Nl[1])
     #ax.plot(xnew*np.sqrt(2.0),plot_func_trunc.ev(xnewfunc,ynewfunc))
 
+    for ind in range(num_files):
+        xsexact,ysexact,qsexact,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,didj_x,didj_y,didj[ind,:],[0]*len(didj[ind,:]))
+        xsexact=np.array(xsexact)
+        ysexact=np.array(ysexact)
+        xnew=np.linspace(xsexact.min(),xsexact.max(),100)
+        ynew=np.linspace(ysexact.min(),ysexact.max(),100)
+        #ynew=np.empty(len(xnew))
+        #ynew.fill(y0)
+        ax.plot(xnew,plt_fn_dict[ind].ev(ynew,xnew),color=c[ind])
     # caution : RectBivariateSpline flips x & y axes, so must enter arguments as (y,x), not (x,y)
     #ax.plot(xnew,plot_func.ev(ynew,xnew),color='orange')
-    ax.plot(xnew,plot_func_re.ev(ynew,xnew),color='blue')
+    #ax.plot(xnew,plot_func_re.ev(ynew,xnew),color='blue')
     #ax.plot(xnew,plot_func_im.ev(ynew,xnew),color='green')
     #ax.plot(xnew,np.sqrt(plot_func_re.ev(ynew,xnew)**2+plot_func_im.ev(ynew,xnew)**2),color='purple')
 
-    #xsexact=np.sqrt(2.0)*xsexact
+        #xsexact=np.sqrt(2.0)*xsexact
     #ax.plot(xsexact,qsexact,linestyle='None',color='red',marker='o')
-    ax.plot(xsexact,qsexact_re,linestyle='None',color='black',marker='s')
+        ax.plot(xsexact,qsexact,linestyle='None',color=c[ind],marker=m[ind])
     #ax.plot(xsexact,qsexact_im,linestyle='None',color='cyan',marker='^')
 
 #for 2D plot
