@@ -16,6 +16,8 @@ import matplotlib.transforms as transforms
 import matplotlib.axes
 from plot_tools import *
 import pyfftw
+import glob
+import os
 
 rc('text', usetex=True)
 rc('font', family='serif')
@@ -26,8 +28,8 @@ Ntot=Nl[0]*Nl[1]
 Nmax=1600
 Uhubb=-4.0
 #lbda=0.5
-lbda=float(raw_input("Enter lambda : "))
 dim_flag='2D'
+params_flag=''
 
 shift=np.zeros(Ntot)
 shift.fill(1)
@@ -42,12 +44,13 @@ elif ('psi_r' in sys.argv[1] and not ('dat' in sys.argv[1])):
     plot_flag='psi_r'
     arg_shift=1
 elif ('read' in sys.argv[1]):
-    params_flag=''
+    params_flag='params'
 else: 
     print 'select an observable to plot'
     plot_flag=str(raw_input("didj, ninj, nk, psi_r? : "))
     arg_shift=0
 
+fft_flag=''
 for arg in sys.argv:
     if('open' in arg):
         open_flg='open_BCs'
@@ -59,13 +62,36 @@ for arg in sys.argv:
         dim_flag='2D'
     if('3D' in arg):
         dim_flag='3D'
-if fft_flag not in locals():
-    fft_flag=''
 
 sym_flag=''
-num_files=1
-if('1D' in dim_flag):
+if('params' not in params_flag):
+    lbda=float(raw_input("Enter lambda : "))
+if(('1D' in dim_flag) and ('params' not in params_flag)):
     num_files=int(raw_input("number of files? : "))
+if(('1D' not in dim_flag) and ('params' not in params_flag)):
+    num_files=1
+
+if('params' in params_flag):
+    paramfile=open('param_file', 'r')
+    num_files=int(paramfile.readline().split(":")[1])
+    s_flag=np.empty(num_files,dtype=str)
+    lam=np.empty(num_files)
+    Uhubbard=np.empty(num_files)
+    o_flg=np.empty(num_files,dtype=str)
+    sym_flag_vec=np.empty(num_files,dtype=np.dtype((str, 3)))
+    plot_flag=str(paramfile.readline().split(":")[1])
+    script_dir=os.getcwd()
+    if ('ntot' in plot_flag):
+        plot_flag='ninj'
+        corr_flag='ntot*ntot'
+    elif ('nu*nu' in plot_flag):
+        plot_flag='ninj'
+        corr_flag='nu*nu'
+    elif ('nu*nd' in plot_flag):
+        plot_flag='ninj'
+        corr_flag='nu*nd'
+    else:
+        plot_flag=plot_flag.strip()
 
 if('ninj' in plot_flag):
 
@@ -81,20 +107,56 @@ if('ninj' in plot_flag):
     Ntot_vec=np.empty(num_files,dtype=np.int64)
 
     plt_fn_dict = {}
+    xi_dict   = {}
+    yi_dict   = {}
 
     for ind in range(num_files):
-        Nl[0]=int(raw_input("Enter Lx : "))
-        Nl[1]=int(raw_input("Enter Ly : "))
-        Ntot_vec[ind]=Nl[0]*Nl[1]
-        Ntot=Ntot_vec[ind]
-        Np=Ntot
-        sym_flag=str(raw_input("sym, Y/N? : "))
-        if ('Y' in sym_flag or 'y' in sym_flag):
-            sym_flag='sym'
+        if('params' in params_flag):
+            lbda=float(paramfile.readline().split(":")[1])
+            Nl[0]=int(paramfile.readline().split(":")[1])
+            Nl[1]=int(paramfile.readline().split(":")[1])
+            Uhubb=float(paramfile.readline().split(":")[1])
+            lam[ind]=lbda
+            Uhubbard[ind]=Uhubb
+            Ntot_vec[ind]=Nl[0]*Nl[1]
+            Ntot=Ntot_vec[ind]
+            Np=Ntot
+            o_flg[ind]=str(paramfile.readline().split(":")[1].strip())
+            sym_flag=str(paramfile.readline().split(":")[1].strip())            
+            if (('Y' in sym_flag) or ('y' in sym_flag)):
+                sym_flag="sym"            
+            else:
+                sym_flag=""
+            sym_flag_vec[ind]=sym_flag
+            dim_flag=str(paramfile.readline().split(":")[1].strip())
+            datadir=str(paramfile.readline().split(":")[1].strip())
+            datadir=re.sub("LX",str(Nl[0]),datadir)
+            datadir=re.sub("LY",str(Nl[1]),datadir)
+            datadir=re.sub("UHUBB",str(Uhubb),datadir)
+            os.chdir(datadir)
+            for dir in glob.glob("m*--1.d0-"+str(lbda)+"-"+str(Uhubb)+"*"):
+                os.chdir(dir)
+                print os.getcwd()
+                for file in glob.glob("*"+str(plot_flag)+".dat"):
+                    data=np.loadtxt(file,dtype=np.float64)
+                lattlabel=np.loadtxt("lattice-label.dat")
+            s_flag[ind]=str(paramfile.readline().split(":")[1].strip())
+            os.chdir(script_dir)
         else:
-            sym_flag=''
+            Nl[0]=int(raw_input("Enter Lx : "))
+            Nl[1]=int(raw_input("Enter Ly : "))
+            Ntot_vec[ind]=Nl[0]*Nl[1]
+            Ntot=Ntot_vec[ind]
+            Np=Ntot
+            sym_flag=str(raw_input("sym, Y/N? : "))
+            if ('Y' in sym_flag or 'y' in sym_flag):
+                sym_flag='sym'
+            else:
+                sym_flag=''
 
-        data=np.loadtxt(sys.argv[1+arg_shift+2*ind],dtype=np.float64)
+            data=np.loadtxt(sys.argv[1+arg_shift+2*ind],dtype=np.float64)
+            lattlabel=np.loadtxt(sys.argv[2+arg_shift+2*ind])
+
         # nu*nd                       
         nui_ndj[ind,:Ntot]=np.array(data[Ntot:,1])
         nui_ndj_err[ind,:Ntot]=np.array(data[Ntot:,3])
@@ -111,7 +173,6 @@ if('ninj' in plot_flag):
         nui_nuj[ind,0]=nui_nuj[ind,0]/2.0
         ninj[ind,0]=ninj[ind,0]/2.0
 
-        lattlabel=np.loadtxt(sys.argv[2+arg_shift+2*ind])
         # shift, so lattice site 1 has coords (x,y)=(0,0) (not (1,1))
         shift=np.zeros(len(lattlabel[:,0]))
         shift.fill(1)
@@ -162,8 +223,11 @@ if('ninj' in plot_flag):
         xi, yi = np.ogrid[ninj_x[ind,:Ntot].min():ninj_x[ind,:Ntot].max():200j, ninj_y[ind,:Ntot].min():ninj_y[ind,:Ntot].max():200j]
         # ogrid gives transposed axes, so transpose back
         xi, yi = xi.T, yi.T
-    
-        corr_flag = str(raw_input("nu*nu, nu*nd, ntot*ntot? : "))
+        xi_dict[ind]=xi
+        yi_dict[ind]=yi
+
+        if('params' not in params_flag):
+            corr_flag = str(raw_input("nu*nu, nu*nd, ntot*ntot? : "))
         if('nu*nu' in corr_flag):
             # nu*nu
             # reshape list --> 2D array
@@ -659,22 +723,68 @@ if '1D' in dim_flag:
 #for 2D plot
 ###############################
 elif '2D' in dim_flag:
-    ax=fig.add_subplot(111)
-    ax.set_xticks(np.arange(xi.min(),xi.max()+1,1))
-    ax.set_yticks(np.arange(yi.min(),yi.max()+1,1))
-    ax.set_xlabel('x',fontsize=24)
-    ax.set_ylabel('y',fontsize=24,rotation=360)
-    ax.xaxis.set_tick_params(labelsize=22)
-    ax.yaxis.set_tick_params(labelsize=22)
+    for ind in range(num_files):
+        xi=xi_dict[ind]
+        yi=yi_dict[ind]
+        #ax=fig.add_subplot(111)
+        fig, ax = plt.subplots(1,1)
+        ax.set_xticks(np.arange(xi.min(),xi.max()+1,1))
+        ax.set_yticks(np.arange(yi.min(),yi.max()+1,1))
+        ax.set_xlabel('x',fontsize=24)
+        ax.set_ylabel('y',fontsize=24,rotation=360)
+        ax.xaxis.set_tick_params(labelsize=22)
+        ax.yaxis.set_tick_params(labelsize=22)
 
-    # caution : RectBivariateSpline flips x & y axes, so must enter arguments as (y,x), not (x,y)
-    if (('psi_r' not in plot_flag) or ('tot' in plot_flag)):
-        implot = ax.imshow(plot_func(yi,xi),extent=(xi.min(),xi.max(),yi.min(),yi.max()),cmap=cm.gnuplot2,origin='lower')
-    else:
-        implot = ax.imshow(np.sqrt(plot_func_re(yi,xi)**2+plot_func_im(yi,xi)**2),extent=(xi.min(),xi.max(),yi.min(),yi.max()),cmap=cm.gnuplot2,origin='lower')
+        # caution : RectBivariateSpline flips x & y axes, so must enter arguments as (y,x), not (x,y)
+        if (('psi_r' not in plot_flag) or ('tot' in plot_flag)):
+            #implot = ax.imshow(plot_func(yi,xi),extent=(xi.min(),xi.max(),yi.min(),yi.max()),cmap=cm.gnuplot2,origin='lower')
+            implot = ax.imshow(plt_fn_dict[ind](yi,xi),extent=(xi.min(),xi.max(),yi.min(),yi.max()),cmap=cm.gnuplot2,origin='lower')
+        else:
+            implot = ax.imshow(np.sqrt(plot_func_re(yi,xi)**2+plot_func_im(yi,xi)**2),extent=(xi.min(),xi.max(),yi.min(),yi.max()),cmap=cm.gnuplot2,origin='lower')
 
-    cb=fig.colorbar(implot,shrink=1.0,pad=0.01)
-    cb.ax.tick_params(labelsize=22)
+        cb=fig.colorbar(implot,shrink=1.0,pad=0.01)
+        cb.ax.tick_params(labelsize=22)
+
+        plt.subplots_adjust(bottom=0.15)
+
+        save=0
+        if('params' in params_flag):
+            save_flag=s_flag[ind]
+            lbda=lam[ind]
+            Uhubb=Uhubbard[ind]
+        if(('y' in save_flag) or ('Y' in save_flag)):
+            save=1
+        for arg in sys.argv:
+            if ('save' in str(arg)) or ('Save' in str(arg)):
+                save=1
+                break
+
+        if save==1:
+            if 'corr_flag' in locals():
+                if (('y' in o_flg[ind]) or ('Y' in o_flg[ind])):
+                    #print sym_flag_vec[ind]
+                    if 'sym' in sym_flag_vec[ind]:
+                        plotname=str(corr_flag)+'_Lx'+str(Nl[0])+'_Ly'+str(Nl[1])+'_Np'+str(Np)+'_U'+str(Uhubb)+'_l'+str(lbda)+'_'+str(dim_flag)+'_open_BCs_sym_restored'+'.pdf'
+                    else:
+                        plotname=str(corr_flag)+'_Lx'+str(Nl[0])+'_Ly'+str(Nl[1])+'_Np'+str(Np)+'_U'+str(Uhubb)+'_l'+str(lbda)+'_'+str(dim_flag)+'_open_BCs.pdf'
+                else:
+                    plotname=str(corr_flag)+'_Lx'+str(Nl[0])+'_Ly'+str(Nl[1])+'_Np'+str(Np)+'_U'+str(Uhubb)+'_l'+str(lbda)+'_'+str(dim_flag)+'.pdf'
+                print plotname
+                fig.savefig(plotname)
+            else:
+                if (('y' in o_flg[ind]) or ('Y' in o_flg[ind])):
+                    if 'sym' in sym_flag_vec[ind]:
+                        plotname=str(plot_flag)+'_Lx'+str(Nl[0])+'_Ly'+str(Nl[1])+'_Np'+str(Np)+'_U'+str(Uhubb)+'_l'+str(lbda)+'_'+str(dim_flag)+'_open_BCs_sym_restored'+'.pdf'
+                    else:
+                        plotname=str(plot_flag)+'_Lx'+str(Nl[0])+'_Ly'+str(Nl[1])+'_Np'+str(Np)+'_U'+str(Uhubb)+'_l'+str(lbda)+'_'+str(dim_flag)+'_open_BCs.pdf'
+                else:
+                    plotname=str(plot_flag)+'_Lx'+str(Nl[0])+'_Ly'+str(Nl[1])+'_Np'+str(Np)+'_U'+str(Uhubb)+'_l'+str(lbda)+'_'+str(dim_flag)+'.pdf'
+                print plotname
+                fig.savefig(plotname)
+        else:
+            #show()
+            plt.waitforbuttonpress()
+            plt.cla()        
 
 #for 3D plot
 ###############################
@@ -711,9 +821,15 @@ elif '3D' in dim_flag:
 
         fig.colorbar(surf,shrink=0.75,pad=0.01)
 
+"""
 plt.subplots_adjust(bottom=0.15)
 
+
 save=0
+if('params' in params_flag):
+    save_flag=str(paramfile.readline().split(":")[1])
+if(('y' in save_flag) or ('Y' in save_flag)):
+    save=1
 for arg in sys.argv:
     if ('save' in str(arg)) or ('Save' in str(arg)):
         save=1
@@ -741,5 +857,5 @@ if save==1:
         print plotname
         fig.savefig(plotname)
 else:
-    show()
-        
+    show()        
+"""
