@@ -45,6 +45,7 @@ elif ('psi_r' in sys.argv[1] and not ('dat' in sys.argv[1])):
     arg_shift=1
 elif ('read' in sys.argv[1]):
     params_flag='params'
+    params_file=str(sys.argv[2])
 else: 
     print 'select an observable to plot'
     plot_flag=str(raw_input("didj, ninj, nk, psi_r? : "))
@@ -72,7 +73,7 @@ if(('1D' not in dim_flag) and ('params' not in params_flag)):
     num_files=1
 
 if('params' in params_flag):
-    paramfile=open('param_file', 'r')
+    paramfile=open(params_file, 'r')
     num_files=int(paramfile.readline().split(":")[1])
     s_flag=np.empty(num_files,dtype=str)
     lam=np.empty(num_files)
@@ -102,6 +103,7 @@ if('ninj' in plot_flag):
     ninj=np.empty((num_files,len(nui_ndj[0,:])),dtype=np.float64)
     ninjerr=np.empty((num_files,len(nui_ndj[0,:])),dtype=np.float64)
     ninj_sym=np.empty((num_files,len(nui_ndj[0,:])),dtype=np.float64)
+    ninj_sym_restored_1D=np.empty((num_files,len(nui_ndj[0,:])),dtype=np.float64)
     ninj_x=np.empty((num_files,Nmax))
     ninj_y=np.empty((num_files,Nmax))
     Ntot_vec=np.empty(num_files,dtype=np.int64)
@@ -134,7 +136,7 @@ if('ninj' in plot_flag):
             datadir=re.sub("LY",str(Nl[1]),datadir)
             datadir=re.sub("UHUBB",str(Uhubb),datadir)
             os.chdir(datadir)
-            for dir in glob.glob("m*--1.d0-"+str(lbda)+"-"+str(Uhubb)+"*"):
+            for dir in glob.glob("m*m64*--1.d0-"+str(lbda)+"-"+str(Uhubb)+"-"+str(Np)+"*"):
                 os.chdir(dir)
                 print os.getcwd()
                 for file in glob.glob("*"+str(plot_flag)+".dat"):
@@ -237,7 +239,7 @@ if('ninj' in plot_flag):
             if('sym' in sym_flag): 
                 # average to restore symmetry n_ij = 1/4 * (n_ij+n_{-i,j}+n_{i,-j}+n_{-i,-j})
                 nui_nuj_2D[1:,1:]=0.25*(nui_nuj_2D[1:,1:]+np.flipud(nui_nuj_2D[1:,1:])+np.fliplr(nui_nuj_2D[1:,1:])+np.flipud(np.fliplr(nui_nuj_2D[1:,1:])))
-                nui_nuj_sym_restored_1D=reshape_2D_to_1D(shift_origin_array(nui_nuj_2D,-1*Nl+1))
+                nui_nuj_sym_restored_1D[ind,:Ntot]=reshape_2D_to_1D(shift_origin_array(nui_nuj_2D,-1*Nl+1))
             # interpolate
             nui_nuj_2D_i=splineinterp_2D(ninj_x[ind,:Ntot],ninj_y[ind,:Ntot],nui_nuj_2D,3,3,0)
             plot_func=nui_nuj_2D_i
@@ -250,7 +252,7 @@ if('ninj' in plot_flag):
             if('sym' in sym_flag): 
                 # average to restore symmetry n_ij = 1/4 * (n_ij+n_{-i,j}+n_{i,-j}+n_{-i,-j})
                 nui_ndj_2D[1:,1:]=0.25*(nui_ndj_2D[1:,1:]+np.flipud(nui_ndj_2D[1:,1:])+np.fliplr(nui_ndj_2D[1:,1:])+np.flipud(np.fliplr(nui_ndj_2D[1:,1:])))
-                nui_ndj_sym_restored_1D=reshape_2D_to_1D(shift_origin_array(nui_ndj_2D,-1*Nl+1))
+                nui_ndj_sym_restored_1D[ind,:Ntot]=reshape_2D_to_1D(shift_origin_array(nui_ndj_2D,-1*Nl+1))
             # interpolate
             nui_ndj_2D_i=splineinterp_2D(ninj_x[ind,:Ntot],ninj_y[ind,:Ntot],nui_ndj_2D,3,3,0)
             plot_func=nui_ndj_2D_i
@@ -266,7 +268,7 @@ if('ninj' in plot_flag):
             if('sym' in sym_flag):
                 # average to restore symmetry n_ij = 1/4 * (n_ij+n_{-i,j}+n_{i,-j}+n_{-i,-j})
                 ninj_2D[1:,1:]=0.25*(ninj_2D[1:,1:]+np.flipud(ninj_2D[1:,1:])+np.fliplr(ninj_2D[1:,1:])+np.flipud(np.fliplr(ninj_2D[1:,1:])))
-                ninj_sym_restored_1D=reshape_2D_to_1D(shift_origin_array(ninj_2D,-1*Nl+1))
+                ninj_sym_restored_1D[ind,:Ntot]=reshape_2D_to_1D(shift_origin_array(ninj_2D,-1*Nl+1))
             # interpolate
             ninj_2D_i=splineinterp_2D(ninj_x[ind,:Ntot],ninj_y[ind,:Ntot],ninj_2D,3,3,0)
             plot_func=ninj_2D_i
@@ -279,24 +281,60 @@ elif('didj' in plot_flag):
     didj_x=np.empty((num_files,Nmax))
     didj_y=np.empty((num_files,Nmax))
     didj_sym=np.empty((num_files,len(didj[0,:])),dtype=np.float64)
+    didj_sym_restored_1D=np.empty((num_files,len(didj[0,:])),dtype=np.float64)
     Ntot_vec=np.empty(num_files,dtype=np.int64)    
 
     plt_fn_dict = {}
+    xi_dict   = {}
+    yi_dict   = {}
 
     for ind in range(num_files):
-        Nl[0]=int(raw_input("Enter Lx : "))
-        Nl[1]=int(raw_input("Enter Ly : "))
-        Ntot_vec[ind]=Nl[0]*Nl[1]
-        Ntot=Ntot_vec[ind]
-        Np=Ntot
-        sym_flag=str(raw_input("sym, Y/N? : "))
-        if ('Y' in sym_flag or 'y' in sym_flag):
-            sym_flag='sym'
+        if('params' in params_flag):
+            lbda=float(paramfile.readline().split(":")[1])
+            Nl[0]=int(paramfile.readline().split(":")[1])
+            Nl[1]=int(paramfile.readline().split(":")[1])
+            Uhubb=float(paramfile.readline().split(":")[1])
+            lam[ind]=lbda
+            Uhubbard[ind]=Uhubb
+            Ntot_vec[ind]=Nl[0]*Nl[1]
+            Ntot=Ntot_vec[ind]
+            Np=Ntot
+            o_flg[ind]=str(paramfile.readline().split(":")[1].strip())
+            sym_flag=str(paramfile.readline().split(":")[1].strip())            
+            if (('Y' in sym_flag) or ('y' in sym_flag)):
+                sym_flag="sym"            
+            else:
+                sym_flag=""
+            sym_flag_vec[ind]=sym_flag
+            dim_flag=str(paramfile.readline().split(":")[1].strip())
+            datadir=str(paramfile.readline().split(":")[1].strip())
+            datadir=re.sub("LX",str(Nl[0]),datadir)
+            datadir=re.sub("LY",str(Nl[1]),datadir)
+            datadir=re.sub("UHUBB",str(Uhubb),datadir)
+            os.chdir(datadir)
+            for dir in glob.glob("m*--1.d0-"+str(lbda)+"-"+str(Uhubb)+"-"+str(Np)+"*"):
+                os.chdir(dir)
+                print os.getcwd()
+                for file in glob.glob("*"+str(plot_flag)+".dat"):
+                    data=np.loadtxt(file,dtype=np.float64)
+                lattlabel=np.loadtxt("lattice-label.dat")
+            s_flag[ind]=str(paramfile.readline().split(":")[1].strip())
+            os.chdir(script_dir)
         else:
-            sym_flag=''
-
-        #load didj data
-        data=np.loadtxt(sys.argv[1+arg_shift+2*ind],dtype=np.float64)
+            Nl[0]=int(raw_input("Enter Lx : "))
+            Nl[1]=int(raw_input("Enter Ly : "))
+            Ntot_vec[ind]=Nl[0]*Nl[1]
+            Ntot=Ntot_vec[ind]
+            Np=Ntot
+            sym_flag=str(raw_input("sym, Y/N? : "))
+            if ('Y' in sym_flag or 'y' in sym_flag):
+                sym_flag='sym'
+            else:
+                sym_flag=''
+            #load didj data
+            data=np.loadtxt(sys.argv[1+arg_shift+2*ind],dtype=np.float64)
+            lattlabel=np.loadtxt(sys.argv[2+arg_shift+2*ind])
+            
         didj[ind,:Ntot]=data[:,1]
         didjerr[ind,:Ntot]=data[:,3]
         # scale origin
@@ -305,7 +343,7 @@ elif('didj' in plot_flag):
         #didj=didj[:]*(Ntot)**2/(Np*(Np-1))
         #didjerr=didjerr[:]*(Ntot)**2/(Np*(Np-1))
         # load x, y coords from lattice-label.dat
-        lattlabel=np.loadtxt(sys.argv[2+arg_shift+2*ind])
+        
         # shift, so lattice site 1 has coords (x,y)=(0,0) (not (1,1))
         shift=np.zeros(len(lattlabel[:,0]))
         shift.fill(1)
@@ -327,6 +365,8 @@ elif('didj' in plot_flag):
         xi, yi = np.ogrid[didj_x[ind,:Ntot].min():didj_x[ind,:Ntot].max():200j, didj_y[ind,:Ntot].min():didj_y[ind,:Ntot].max():200j]
         # ogrid gives transposed axes, so transpose back
         xi, yi = xi.T, yi.T
+        xi_dict[ind]=xi
+        yi_dict[ind]=yi
 
         # restore symmetry
         #didj_sym=restore_symmetry(didj_x[ind,:Ntot],didj_y[ind,:Ntot],Nl,didj[ind,:Ntot])
@@ -343,7 +383,7 @@ elif('didj' in plot_flag):
             #didj_2D=shift_origin_array(didj_2D,Nl)
             didj_2D[1:,1:]=0.25*(didj_2D[1:,1:]+np.flipud(didj_2D[1:,1:])+np.fliplr(didj_2D[1:,1:])+np.flipud(np.fliplr(didj_2D[1:,1:])))
             # to plot 1D data, reshift origin, and reshape to 1D list 
-            didj_sym_restored_1D=reshape_2D_to_1D(shift_origin_array(didj_2D,-1*Nl+1))
+            didj_sym_restored_1D[ind,:Ntot]=reshape_2D_to_1D(shift_origin_array(didj_2D,-1*Nl+1))
             """
             for i in range(Ntot):
                 print didj_sym_restored_1D[i]-didj_sym[ind,i]
@@ -681,24 +721,25 @@ if '1D' in dim_flag:
 
     for ind in range(num_files):
         if ('ninj' in plot_flag):
-            x0=ninj_x[ind,:Ntot_vec[ind]].min()
-            y0=ninj_y[ind,:Ntot_vec[ind]].min()*0
-            xsdir=1
-            ysdir=0
-            xsexact,ysexact,qsexact_sym,qsexacterr_sym=grab_slice(x0,y0,xsdir,ysdir,ninj_x[ind,:Ntot_vec[ind]],ninj_y[ind,:Ntot_vec[ind]],ninj_sym[ind,:Ntot_vec[ind]],[0]*len(ninj_sym[ind,:Ntot_vec[ind]]))
+            x0=ninj_x[ind,:Ntot_vec[ind]].min()*0
+            y0=ninj_y[ind,:Ntot_vec[ind]].min()
+            xsdir=0
+            ysdir=1
+            xsexact,ysexact,qsexact_sym,qsexacterr_sym=grab_slice(x0,y0,xsdir,ysdir,ninj_x[ind,:Ntot_vec[ind]],ninj_y[ind,:Ntot_vec[ind]],ninj_sym_restored_1D[ind,:Ntot_vec[ind]],[0]*len(ninj_sym_restored_1D[ind,:Ntot_vec[ind]]))
             xsexact,ysexact,qsexact,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,ninj_x[ind,:Ntot_vec[ind]],ninj_y[ind,:Ntot_vec[ind]],ninj[ind,:Ntot_vec[ind]],[0]*len(ninj[ind,:Ntot_vec[ind]]))
             #print xsexact
             #print ysexact
             #print qsexact
         elif ('didj' in plot_flag):
-            x0=didj_x[ind,:Ntot_vec[ind]].min()
+            x0=didj_x[ind,:Ntot_vec[ind]].min()*0
             y0=didj_y[ind,:Ntot_vec[ind]].min()
-            xsdir=1
+            xsdir=0
             ysdir=1
             #if(ind==0):
             #    xsexact,ysexact,qsexact,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,didj_x[ind,:Ntot_vec[ind]],didj_y[ind,:Ntot_vec[ind]],didj_sym[ind,:Ntot_vec[ind]],[0]*len(didj_sym[ind,:Ntot_vec[ind]]))
             #if(ind>0):
             #    xsexact,ysexact,qsexact,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,didj_x[ind,:Ntot_vec[ind]],didj_y[ind,:Ntot_vec[ind]],didj[ind,:Ntot_vec[ind]],[0]*len(didj[ind,:Ntot_vec[ind]]))
+            xsexact,ysexact,qsexact_sym,qsexacterr_sym=grab_slice(x0,y0,xsdir,ysdir,didj_x[ind,:Ntot_vec[ind]],didj_y[ind,:Ntot_vec[ind]],didj_sym_restored_1D[ind,:Ntot_vec[ind]],[0]*len(didj_sym_restored_1D[ind,:Ntot_vec[ind]]))
             xsexact,ysexact,qsexact,qsexacterr=grab_slice(x0,y0,xsdir,ysdir,didj_x[ind,:Ntot_vec[ind]],didj_y[ind,:Ntot_vec[ind]],didj[ind,:Ntot_vec[ind]],[0]*len(didj[ind,:Ntot_vec[ind]]))
         xsexact=np.array(xsexact)
         ysexact=np.array(ysexact)
@@ -706,7 +747,7 @@ if '1D' in dim_flag:
         ynew=np.linspace(ysexact.min(),ysexact.max(),100)
         #ynew=np.empty(len(xnew))
         #ynew.fill(y0)
-        ax.plot(xnew,plt_fn_dict[ind].ev(ynew,xnew),color=c[ind])
+        ax.plot(ynew,plt_fn_dict[ind].ev(ynew,xnew),color=c[ind])
     # caution : RectBivariateSpline flips x & y axes, so must enter arguments as (y,x), not (x,y)
     #ax.plot(xnew,plot_func.ev(ynew,xnew),color='orange')
     #ax.plot(xnew,plot_func_re.ev(ynew,xnew),color='blue')
@@ -715,10 +756,13 @@ if '1D' in dim_flag:
 
         #xsexact=np.sqrt(2.0)*xsexact
     #ax.plot(xsexact,qsexact,linestyle='None',color='red',marker='o')
-        print qsexact
-        ax.plot(xsexact,qsexact,linestyle='None',color=c[ind],marker=m[ind])
+        print qsexact_sym
+        ax.plot(ysexact,qsexact_sym,linestyle='None',color=c[ind],marker=m[ind])
         #ax.plot(xsexact,qsexact_sym,linestyle='None',color=c[ind+1],marker=m[ind+1])
     #ax.plot(xsexact,qsexact_im,linestyle='None',color='cyan',marker='^')
+    plt.subplots_adjust(bottom=0.15)
+
+    show()
 
 #for 2D plot
 ###############################
